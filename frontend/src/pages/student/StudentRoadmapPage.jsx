@@ -172,9 +172,6 @@ export const StudentRoadmapPage = () => {
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const [hasStudiedArticle, setHasStudiedArticle] = useState(false);
-  const [assessmentCancelledReason, setAssessmentCancelledReason] = useState(null);
-  const [activeTaskForModal, setActiveTaskForModal] = useState(null);
-  const [activeMilestoneForModal, setActiveMilestoneForModal] = useState(null);
   const autoSubmittedRef = useRef(false);
 
   // Dynamic Roadmap Generator Form States
@@ -270,7 +267,7 @@ export const StudentRoadmapPage = () => {
 
   // 10-Minute Assessment Countdown Timer
   useEffect(() => {
-    if (!assessmentModalOpen || assessmentLoading || quizResult || !assessmentData || !hasStudiedArticle || assessmentCancelledReason) return;
+    if (!assessmentModalOpen || assessmentLoading || quizResult || !assessmentData || !hasStudiedArticle) return;
     if (quizTimeLeft <= 0) {
       if (!autoSubmittedRef.current) {
         autoSubmittedRef.current = true;
@@ -282,55 +279,7 @@ export const StudentRoadmapPage = () => {
       setQuizTimeLeft(t => t - 1);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [assessmentModalOpen, assessmentLoading, quizTimeLeft, quizResult, assessmentData, hasStudiedArticle, assessmentCancelledReason]);
-
-  // Anti-Cheat & Strict Tab Switch Guard: Cancel session immediately if student switches tabs or defocuses window
-  useEffect(() => {
-    if (!assessmentModalOpen || assessmentLoading || quizResult || !assessmentData || !hasStudiedArticle || assessmentCancelledReason) {
-      return;
-    }
-
-    let blurTimeout = null;
-
-    const handleViolation = (type) => {
-      console.warn(`[Anti-Cheat Proctoring] Violation detected: ${type}`);
-      setAssessmentCancelledReason(
-        'Tab switch or window unfocus was detected. As per strict proctoring and integrity policies, navigating outside the active assessment tab is strictly prohibited. This session has been cancelled and your progress voided.'
-      );
-      setQuizAnswers({});
-      setConfirmSubmitOpen(false);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden || document.visibilityState === 'hidden') {
-        handleViolation('Tab Switch / Document Hidden');
-      }
-    };
-
-    const handleBlur = () => {
-      // Debounce slightly to ensure it is a genuine window unfocus and not an internal click/focus shift
-      blurTimeout = setTimeout(() => {
-        if (document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus())) {
-          handleViolation('Window Blur / Focus Lost');
-        }
-      }, 350);
-    };
-
-    const handleFocus = () => {
-      if (blurTimeout) clearTimeout(blurTimeout);
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      if (blurTimeout) clearTimeout(blurTimeout);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [assessmentModalOpen, assessmentLoading, quizResult, assessmentData, hasStudiedArticle, assessmentCancelledReason]);
+  }, [assessmentModalOpen, assessmentLoading, quizTimeLeft, quizResult, assessmentData, hasStudiedArticle]);
 
   useEffect(() => {
     fetchRoadmaps();
@@ -461,8 +410,6 @@ export const StudentRoadmapPage = () => {
 
   // Open 20-Question Topic Assessment Modal
   const handleOpenAssessment = async (task, milestone) => {
-    setActiveTaskForModal(task);
-    setActiveMilestoneForModal(milestone);
     setAssessmentModalOpen(true);
     setAssessmentLoading(true);
     setAssessmentError('');
@@ -474,7 +421,6 @@ export const StudentRoadmapPage = () => {
     setShowReview(false);
     setConfirmSubmitOpen(false);
     setHasStudiedArticle(false);
-    setAssessmentCancelledReason(null);
     autoSubmittedRef.current = false;
 
     try {
@@ -580,7 +526,7 @@ export const StudentRoadmapPage = () => {
   };
 
   const handleCloseModal = () => {
-    if (!quizResult && !assessmentCancelledReason && Object.keys(quizAnswers).length > 0 && quizTimeLeft > 0) {
+    if (!quizResult && Object.keys(quizAnswers).length > 0 && quizTimeLeft > 0) {
       if (!window.confirm('You have an active assessment in progress. Are you sure you want to exit? Your answers will be lost.')) {
         return;
       }
@@ -589,7 +535,6 @@ export const StudentRoadmapPage = () => {
     setAssessmentData(null);
     setQuizResult(null);
     setHasStudiedArticle(false);
-    setAssessmentCancelledReason(null);
   };
 
   const copyVerificationCode = (code) => {
@@ -2058,27 +2003,8 @@ export const StudentRoadmapPage = () => {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {/* Session Cancelled Indicator */}
-                {assessmentCancelledReason && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    padding: '0.4rem 0.85rem',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: '#dc2626',
-                    color: '#ffffff',
-                    fontWeight: 800,
-                    fontSize: '0.8rem',
-                    letterSpacing: '0.04em'
-                  }}>
-                    <AlertTriangle size={15} />
-                    Session Cancelled
-                  </div>
-                )}
-
-                {/* Timer Badge (Active after confirming study and not cancelled) */}
-                {assessmentData && !quizResult && hasStudiedArticle && !assessmentCancelledReason && (
+                {/* Timer Badge (Active after confirming study) */}
+                {assessmentData && !quizResult && hasStudiedArticle && (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -2098,7 +2024,7 @@ export const StudentRoadmapPage = () => {
                 )}
 
                 {/* Study Mode Indicator (Timer is held/paused until confirmation) */}
-                {assessmentData && !quizResult && !hasStudiedArticle && !assessmentCancelledReason && (
+                {assessmentData && !quizResult && !hasStudiedArticle && (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -2305,90 +2231,6 @@ export const StudentRoadmapPage = () => {
                     </button>
                   </div>
                 </div>
-              ) : assessmentCancelledReason ? (
-                /* ================= PROCTORING VIOLATION: CANCELLED SESSION VIEW ================= */
-                <div style={{
-                  padding: '2.5rem 1.5rem',
-                  textAlign: 'center',
-                  maxWidth: '640px',
-                  margin: '0 auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '1rem'
-                }}>
-                  <div style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: '50%',
-                    backgroundColor: '#fee2e2',
-                    border: '4px solid #fecaca',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '0.5rem'
-                  }}>
-                    <AlertTriangle size={38} color="#dc2626" />
-                  </div>
-
-                  <div className="badge" style={{ backgroundColor: '#dc2626', color: '#ffffff', fontWeight: 800, padding: '0.4rem 0.9rem', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Proctoring Integrity Violation
-                  </div>
-
-                  <h3 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#991b1b', margin: '0.25rem 0' }}>
-                    Assessment Session Cancelled
-                  </h3>
-
-                  <div style={{
-                    padding: '1.25rem 1.5rem',
-                    backgroundColor: '#fef2f2',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1.5px solid #fecaca',
-                    color: '#7f1d1d',
-                    fontSize: '0.88rem',
-                    lineHeight: 1.6,
-                    textAlign: 'left'
-                  }}>
-                    <div style={{ fontWeight: 800, marginBottom: '0.35rem', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <ShieldCheck size={18} color="#dc2626" /> Reason for Termination:
-                    </div>
-                    <p style={{ margin: 0 }}>
-                      {assessmentCancelledReason}
-                    </p>
-                  </div>
-
-                  <p style={{ fontSize: '0.84rem', color: 'var(--slate-500)', margin: '0.5rem 0 1rem' }}>
-                    To preserve certification authenticity, leaving the assessment tab is strictly prohibited. Your responses have been voided and the session terminated.
-                  </p>
-
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <button
-                      onClick={handleCloseModal}
-                      className="btn btn-secondary"
-                      style={{ padding: '0.75rem 1.5rem', fontWeight: 700 }}
-                    >
-                      Close & Return to Roadmap
-                    </button>
-
-                    {activeTaskForModal && activeMilestoneForModal && (
-                      <button
-                        onClick={() => handleOpenAssessment(activeTaskForModal, activeMilestoneForModal)}
-                        className="btn btn-primary"
-                        style={{
-                          padding: '0.75rem 1.5rem',
-                          fontWeight: 800,
-                          backgroundColor: '#dc2626',
-                          borderColor: '#dc2626',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.5rem'
-                        }}
-                      >
-                        <RotateCcw size={16} /> Try Assessment Again
-                      </button>
-                    )}
-                  </div>
-                </div>
               ) : assessmentData && !hasStudiedArticle ? (
                 /* ================= STEP 1: REFERENCE ARTICLES & PRE-ASSESSMENT STUDY GUIDE ================= */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2566,26 +2408,6 @@ export const StudentRoadmapPage = () => {
                       Once you confirm, the <strong>10-minute assessment countdown</strong> will begin. You will answer <strong>20 multiple-choice questions</strong> to verify your mastery and earn your certificate verification code.
                     </p>
 
-                    {/* Anti-Cheat Proctoring Strict Warning */}
-                    <div style={{
-                      padding: '0.65rem 1rem',
-                      backgroundColor: '#fff1f2',
-                      border: '1px solid #fecdd3',
-                      borderRadius: 'var(--radius-sm)',
-                      maxWidth: '540px',
-                      margin: '0 auto 1.25rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.55rem',
-                      color: '#9f1239',
-                      fontSize: '0.81rem',
-                      fontWeight: 600,
-                      textAlign: 'left'
-                    }}>
-                      <AlertTriangle size={17} color="#e11d48" style={{ flexShrink: 0 }} />
-                      <span><strong>Strict Anti-Cheat Rule:</strong> Once you click Start Assessment, leaving or switching tabs will immediately terminate and cancel your session.</span>
-                    </div>
-
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                       <button
                         onClick={handleCloseModal}
@@ -2618,28 +2440,6 @@ export const StudentRoadmapPage = () => {
               ) : assessmentData && hasStudiedArticle ? (
                 /* ================= 20-QUESTION ACTIVE QUIZ VIEW ================= */
                 <div>
-                  {/* Strict Tab Switch Proctoring Guard Banner */}
-                  <div style={{
-                    padding: '0.65rem 1rem',
-                    backgroundColor: '#fef2f2',
-                    border: '1.5px solid #fecaca',
-                    borderRadius: 'var(--radius-sm)',
-                    marginBottom: '1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '0.75rem',
-                    flexWrap: 'wrap'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b', fontSize: '0.82rem', fontWeight: 700 }}>
-                      <AlertTriangle size={16} color="#dc2626" />
-                      <span><strong>Strict Proctoring Active:</strong> Do not leave or switch this tab, minimize the window, or click outside. Any tab switch will immediately terminate and cancel your assessment.</span>
-                    </div>
-                    <span className="badge" style={{ backgroundColor: '#dc2626', color: '#ffffff', fontSize: '0.68rem', fontWeight: 800 }}>
-                      Tab Guard ON
-                    </span>
-                  </div>
-
                   {/* Question Navigator Pills (1 to 20) */}
                   <div style={{ marginBottom: '1.25rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

@@ -43,7 +43,6 @@ export const Sidebar = ({ isOpen, onClose, isReopening = false }) => {
         return [
           { name: 'Profile', path: '/student/profile', icon: User },
           { name: 'Roadmap', path: '/student/roadmap', icon: Compass },
-          { name: 'Skill Assessments', path: '/student/assessment', icon: Target },
           { name: 'Skills & Gap Analysis', path: '/student/skills-gap', icon: BarChart2 },
           { name: 'Certificate Verifier', path: '/student/certificate-verify', icon: ShieldCheck },
           { name: 'Certifications', path: '/student/certifications', icon: Award },

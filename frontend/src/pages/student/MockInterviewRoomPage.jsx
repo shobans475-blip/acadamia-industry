@@ -63,8 +63,6 @@ export const MockInterviewRoomPage = () => {
   const recognitionRef = useRef(null);
   const isRecordingRef = useRef(false);
   const committedAnswerRef = useRef(''); // Holds text finalized or typed
-  const [sessionCancelledReason, setSessionCancelledReason] = useState(null);
-  const sessionCancelledRef = useRef(false);
 
   // Doll state: 'idle' | 'speaking' | 'listening' | 'evaluating'
   const dollState = evaluating 
@@ -104,67 +102,6 @@ export const MockInterviewRoomPage = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isRecording]);
-
-  // Anti-Cheat & Strict Tab Switch Guard: Cancel Coach Nova live session if user switches tabs or window loses focus
-  useEffect(() => {
-    if (loadingQuestions || report || evaluating || sessionCancelledReason || questions.length === 0) {
-      return;
-    }
-
-    const handleViolation = (type) => {
-      console.warn(`[Coach Nova Live Interview Proctoring] Violation detected: ${type}`);
-      sessionCancelledRef.current = true;
-      setSessionCancelledReason(
-        'Tab switch or window unfocus was detected. Under strict interview proctoring guidelines, navigating away from the Coach Nova live interview tab is strictly prohibited. Your live interview session has been cancelled.'
-      );
-
-      // Stop speech recognition immediately
-      stopRecording();
-
-      // Cancel TTS voice immediately
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-      setIsSpeakingQuestion(false);
-
-      // Clear interval timer
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-
-    let blurTimeout = null;
-
-    const handleVisibilityChange = () => {
-      if (document.hidden || document.visibilityState === 'hidden') {
-        handleViolation('Tab Switch / Document Hidden');
-      }
-    };
-
-    const handleBlur = () => {
-      // Debounce slightly to ensure it is a genuine window unfocus and not a momentary UI/mic focus shift
-      blurTimeout = setTimeout(() => {
-        if (document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus())) {
-          handleViolation('Window Blur / Focus Lost');
-        }
-      }, 350);
-    };
-
-    const handleFocus = () => {
-      if (blurTimeout) clearTimeout(blurTimeout);
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      if (blurTimeout) clearTimeout(blurTimeout);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [loadingQuestions, report, evaluating, sessionCancelledReason, questions.length]);
 
   const fetchQuestions = async () => {
     try {
@@ -444,18 +381,6 @@ export const MockInterviewRoomPage = () => {
     }
   };
 
-  const handleRestartInterview = () => {
-    setSessionCancelledReason(null);
-    sessionCancelledRef.current = false;
-    setAnswers({});
-    setCurrentAnswer('');
-    committedAnswerRef.current = '';
-    setInterimSpeech('');
-    setCurrentQIndex(0);
-    setElapsedSeconds(0);
-    fetchQuestions();
-  };
-
   const currentQObj = questions[currentQIndex];
   const combinedText = currentAnswer.trim();
   const wordCount = combinedText ? combinedText.split(/\s+/).filter(Boolean).length : 0;
@@ -561,113 +486,9 @@ export const MockInterviewRoomPage = () => {
         </div>
       )}
 
-      {/* Session Cancelled: Proctoring Integrity Violation */}
-      {sessionCancelledReason && !report && (
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '24px',
-          border: '2px solid #ef4444',
-          boxShadow: '0 20px 25px -5px rgba(239, 68, 68, 0.15)',
-          padding: '3rem 2rem',
-          maxWidth: '720px',
-          margin: '2rem auto',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            width: 80,
-            height: 80,
-            borderRadius: '50%',
-            backgroundColor: '#fee2e2',
-            border: '4px solid #fecaca',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.25rem'
-          }}>
-            <AlertTriangle size={42} color="#dc2626" />
-          </div>
-
-          <div className="badge" style={{ backgroundColor: '#dc2626', color: '#ffffff', fontWeight: 800, padding: '0.4rem 1rem', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
-            Proctoring Violation Detected
-          </div>
-
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#991b1b', margin: '0.25rem 0 0.5rem' }}>
-            Coach Nova Live Interview Cancelled
-          </h2>
-          <p style={{ color: 'var(--slate-600)', fontSize: '0.96rem', maxWidth: '580px', margin: '0 auto 1.5rem', lineHeight: 1.6 }}>
-            Tab switch or window defocus was detected during the live interview session.
-          </p>
-
-          <div style={{
-            padding: '1.25rem 1.5rem',
-            backgroundColor: '#fef2f2',
-            borderRadius: '16px',
-            border: '1.5px solid #fecaca',
-            color: '#7f1d1d',
-            fontSize: '0.9rem',
-            lineHeight: 1.6,
-            textAlign: 'left',
-            marginBottom: '2rem'
-          }}>
-            <div style={{ fontWeight: 800, marginBottom: '0.35rem', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <AlertTriangle size={18} color="#dc2626" /> Interview Integrity Policy:
-            </div>
-            Coach Nova evaluates real-time verbal communication, thought structure, and problem-solving under authentic interview conditions. Leaving this tab, switching to other windows, or opening external aids immediately invalidates the interview session.
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => navigate('/student/mock-interview')}
-              className="btn btn-secondary"
-              style={{ padding: '0.8rem 1.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <ArrowLeft size={16} /> Return to Interview Setup
-            </button>
-            <button
-              onClick={handleRestartInterview}
-              className="btn btn-primary"
-              style={{
-                padding: '0.8rem 1.75rem',
-                fontWeight: 800,
-                backgroundColor: '#dc2626',
-                borderColor: '#dc2626',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)'
-              }}
-            >
-              <RotateCcw size={16} /> Restart Live Interview
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Live Interview Stage */}
-      {!report && !evaluating && !sessionCancelledReason && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Strict Live Proctoring Active Banner */}
-          <div style={{
-            padding: '0.75rem 1.25rem',
-            borderRadius: '14px',
-            backgroundColor: '#fef2f2',
-            border: '1.5px solid #fecaca',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#991b1b', fontSize: '0.86rem', fontWeight: 700 }}>
-              <AlertTriangle size={18} color="#dc2626" />
-              <span><strong>Strict Live Proctoring Active:</strong> Do not leave or switch this tab, minimize the window, or click outside. Doing so will immediately terminate and cancel your interview with Coach Nova.</span>
-            </div>
-            <span className="badge" style={{ backgroundColor: '#dc2626', color: '#ffffff', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.04em' }}>
-              ANTI-CHEAT ACTIVE
-            </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 400px) 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      {!report && !evaluating && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 400px) 1fr', gap: '1.5rem', alignItems: 'start' }}>
           {/* Left Column: AI Interviewer Virtual Stage */}
           <div className="card" style={{
             background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%)',
@@ -1045,7 +866,6 @@ export const MockInterviewRoomPage = () => {
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Comprehensive Post-Interview AI Diagnostic Evaluation Report */}
