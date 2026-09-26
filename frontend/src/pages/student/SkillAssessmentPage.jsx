@@ -29,6 +29,8 @@ export const SkillAssessmentPage = () => {
       setAnswers({});
     };
 
+    let blurTimeout = null;
+
     const handleVisibilityChange = () => {
       if (document.hidden || document.visibilityState === 'hidden') {
         handleViolation('Tab Switch / Document Hidden');
@@ -36,15 +38,26 @@ export const SkillAssessmentPage = () => {
     };
 
     const handleBlur = () => {
-      handleViolation('Window Blur / Focus Lost');
+      blurTimeout = setTimeout(() => {
+        if (document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus())) {
+          handleViolation('Window Blur / Focus Lost');
+        }
+      }, 350);
+    };
+
+    const handleFocus = () => {
+      if (blurTimeout) clearTimeout(blurTimeout);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
+      if (blurTimeout) clearTimeout(blurTimeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [activeQuiz, result, cancelledReason]);
 

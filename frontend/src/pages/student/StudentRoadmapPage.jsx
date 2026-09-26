@@ -290,6 +290,8 @@ export const StudentRoadmapPage = () => {
       return;
     }
 
+    let blurTimeout = null;
+
     const handleViolation = (type) => {
       console.warn(`[Anti-Cheat Proctoring] Violation detected: ${type}`);
       setAssessmentCancelledReason(
@@ -306,15 +308,27 @@ export const StudentRoadmapPage = () => {
     };
 
     const handleBlur = () => {
-      handleViolation('Window Blur / Focus Lost');
+      // Debounce slightly to ensure it is a genuine window unfocus and not an internal click/focus shift
+      blurTimeout = setTimeout(() => {
+        if (document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus())) {
+          handleViolation('Window Blur / Focus Lost');
+        }
+      }, 350);
+    };
+
+    const handleFocus = () => {
+      if (blurTimeout) clearTimeout(blurTimeout);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
+      if (blurTimeout) clearTimeout(blurTimeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [assessmentModalOpen, assessmentLoading, quizResult, assessmentData, hasStudiedArticle, assessmentCancelledReason]);
 

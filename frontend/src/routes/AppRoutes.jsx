@@ -80,6 +80,10 @@ export const AppRoutes = () => {
           <Route path="/student/skills-gap" element={<StudentSkillsGapPage />} />
           <Route path="/student/skills" element={<StudentSkillsGapPage />} />
           <Route path="/student/skill-gap" element={<StudentSkillsGapPage />} />
+          <Route path="/student/assessment" element={<SkillAssessmentPage />} />
+          <Route path="/student/assessments" element={<SkillAssessmentPage />} />
+          <Route path="/student/skill-assessment" element={<SkillAssessmentPage />} />
+          <Route path="/student/skill-assessments" element={<SkillAssessmentPage />} />
           <Route path="/student/certificate-verify" element={<CertificateVerificationPage />} />
           <Route path="/student/certifications" element={<StudentCertificationsPage />} />
           <Route path="/student/achievements" element={<StudentCertificationsPage />} />
