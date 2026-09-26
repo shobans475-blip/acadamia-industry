@@ -403,14 +403,13 @@ async function submitTaskAssessment(req, res) {
     try {
       await pool.query(
         `INSERT INTO student_certifications 
-          (student_id, certificate_name, issuing_organization, issue_date, credential_id, verification_url, verification_code, badge_awarded, score_percentage, is_verified, verified_at)
-         VALUES (?, ?, 'AI Skill Verification Engine', CURDATE(), ?, ?, ?, ?, ?, 1, NOW())`,
+          (student_id, name, issuing_organization, issue_date, credential_id, certificate_url, badge_awarded, score_percentage, is_verified, verified_at)
+         VALUES (?, ?, 'AI Skill Verification Engine', CURDATE(), ?, ?, ?, ?, 1, NOW())`,
         [
           studentId,
           `${session.topic_title} Mastery`,
           evaluation.verificationCode,
           `/student/certificate-verify?code=${evaluation.verificationCode}`,
-          evaluation.verificationCode,
           evaluation.badgeAwarded ? 1 : 0,
           evaluation.scorePercentage
         ]

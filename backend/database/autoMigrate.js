@@ -70,6 +70,11 @@ async function ensureColumnsExist(currentDb) {
   await addColumnIfMissing('institution_industry_connections', 'proposal_note', 'TEXT DEFAULT NULL', currentDb);
   await addColumnIfMissing('institution_industry_connections', 'initiator', "VARCHAR(50) DEFAULT 'INSTITUTION'", currentDb);
 
+  // 6. roadmap_task_quiz_sessions columns
+  await addColumnIfMissing('roadmap_task_quiz_sessions', 'correct_count', 'INT DEFAULT 0', currentDb);
+  await addColumnIfMissing('roadmap_task_quiz_sessions', 'badge_awarded', 'TINYINT(1) DEFAULT 0', currentDb);
+  await addColumnIfMissing('roadmap_task_quiz_sessions', 'verification_code', 'VARCHAR(100) DEFAULT NULL', currentDb);
+
   console.log(`[Database Auto-Migrate] Column synchronization complete.`);
 }
 
@@ -90,6 +95,9 @@ async function ensureSupplementaryTablesExist(currentDb) {
         duration_seconds INT DEFAULT 600,
         submitted TINYINT(1) DEFAULT 0,
         score_percentage DECIMAL(5,2) DEFAULT NULL,
+        correct_count INT DEFAULT 0,
+        badge_awarded TINYINT(1) DEFAULT 0,
+        verification_code VARCHAR(100) DEFAULT NULL,
         started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         submitted_at TIMESTAMP NULL DEFAULT NULL
       ) ENGINE=InnoDB;
