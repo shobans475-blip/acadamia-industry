@@ -227,7 +227,7 @@ Return ONLY pure JSON. No markdown fences, no conversational prose.
     };
 
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
       contents: [prompt, imagePart],
       config: {
         responseMimeType: 'application/json'

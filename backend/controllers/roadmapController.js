@@ -1,8 +1,19 @@
 const crypto = require('crypto');
+const { GoogleGenAI } = require('@google/genai');
 const { pool } = require('../config/db');
 const { calculateSkillMatch } = require('../services/matchingService');
 const { sendSuccess, sendError } = require('../utils/responseHandler');
 const { generate20QuestionsForTopic, evaluateTopicAnswers } = require('../services/topicAssessmentService');
+
+const GEMINI_API_KEY = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+let genAI = null;
+if (GEMINI_API_KEY) {
+  try {
+    genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  } catch (e) {
+    console.warn('[RoadmapController] GoogleGenAI init warning:', e.message);
+  }
+}
 
 /**
  * List all available career paths and company roadmaps with department & domain filtering
@@ -787,6 +798,115 @@ function synthesizeCurriculum(targetRole, companyName, difficulty = 'INTERMEDIAT
 }
 
 /**
+ * Uses Google Gemini to generate a personalized, structured learning roadmap curriculum
+ */
+async function generateAICurriculum(params, studentContext = {}) {
+  const {
+    targetRole,
+    companyName = '',
+    difficulty = 'INTERMEDIATE',
+    estimatedWeeks = 12,
+    focusTopics = '',
+    department = 'ALL',
+    domain = ''
+  } = params;
+
+  if (!genAI || !GEMINI_API_KEY) {
+    console.log('[Roadmap AI] No Gemini API key initialized, using algorithmic synthesizer.');
+    return null;
+  }
+
+  const prompt = `
+You are a principal curriculum architect and elite tech hiring lead at an Academia-Industry Collaboration platform.
+Generate a comprehensive, modern, production-grade learning roadmap for an engineering student based on these inputs:
+
+STUDENT PROFILE & GOALS:
+- Target Role: "${targetRole}"
+- Target Company: "${companyName || 'Top Tier Global Tech / High-Impact Enterprise'}"
+- Proficiency Level: "${difficulty}" (BEGINNER, INTERMEDIATE, or ADVANCED)
+- Duration: ${estimatedWeeks} Weeks
+- College Department: "${department || studentContext.department || 'Computer Science & Engineering'}"
+- Target Engineering Domain: "${domain || 'Software Engineering'}"
+- Student Focus Topics & Preferences: "${focusTopics || 'Practical system engineering, modern frameworks, and job-ready projects'}"
+
+REQUIREMENTS:
+1. Create a clear, engaging, industry-calibrated roadmap title and a 2-3 sentence overview description.
+2. Provide an "inferredDomain" (e.g. "Full Stack Web Development", "Cloud Architecture & DevOps", "Data Science & Machine Learning", "Embedded Systems & IoT", "Cybersecurity", or "Robotics & Automation").
+3. Generate between 4 to 6 milestones (phases in chronological sequence from step_order: 1 to N).
+4. Each milestone MUST have:
+   - "step_order": Integer (1, 2, 3...)
+   - "title": Phase title (e.g. "Phase 1: Foundations & Core Architecture")
+   - "description": 1-2 sentences on the objectives and deliverables of this phase.
+   - "tasks": Exactly 3 to 4 actionable tasks.
+5. Each task MUST have:
+   - "title": Action-oriented task title (e.g. "Design Normalized Relational Schema in MySQL", "Build Async Microservice with Fastify & Redis")
+   - "description": Practical 1-2 sentence description explaining what to build or master.
+   - "skill_name": One of standard skills (e.g. "Python", "Java", "SQL & Relational DBs", "Data Structures & Algorithms", "React.js", "Node.js & Express", "Cloud Computing (AWS/GCP)", "Docker & Containers", "Professional Communication", "Problem Solving & Critical Thinking")
+   - "estimated_hours": Integer (between 6 and 14 hours)
+   - "difficulty": "EASY", "MEDIUM", or "HARD"
+
+OUTPUT FORMAT:
+Return PURE JSON adhering strictly to this schema:
+{
+  "title": "Roadmap Title Here",
+  "description": "2-3 sentence summary of the roadmap and career readiness outcomes.",
+  "inferredDomain": "Inferred Domain Name",
+  "milestones": [
+    {
+      "step_order": 1,
+      "title": "Phase 1: Phase Name",
+      "description": "Phase description",
+      "tasks": [
+        {
+          "title": "Task Title",
+          "description": "Task practical instructions",
+          "skill_name": "Skill Name",
+          "estimated_hours": 8,
+          "difficulty": "MEDIUM"
+        }
+      ]
+    }
+  ]
+}
+Return only JSON. Do not include markdown or conversational commentary.
+`;
+
+  const candidateModels = [
+    process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    'gemini-3.5-flash-lite',
+    'gemini-3.7-flash',
+    'gemini-3.8-flash'
+  ];
+  const uniqueModels = [...new Set(candidateModels)];
+
+  for (const modelName of uniqueModels) {
+    try {
+      console.log(`[Roadmap AI] Generating AI roadmap with Gemini (${modelName}) for "${targetRole}" (Company: "${companyName || 'None'}", Difficulty: ${difficulty})...`);
+      const response = await genAI.models.generateContent({
+        model: modelName,
+        contents: [prompt],
+        config: {
+          responseMimeType: 'application/json'
+        }
+      });
+
+      const text = response.text ? response.text.trim() : '';
+      const cleanJson = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+      const data = JSON.parse(cleanJson);
+
+      if (data && data.title && Array.isArray(data.milestones) && data.milestones.length > 0) {
+        console.log(`[Roadmap AI] Gemini (${modelName}) generated curriculum successfully! Title: "${data.title}" with ${data.milestones.length} milestones.`);
+        return data;
+      }
+    } catch (err) {
+      console.warn(`[Roadmap AI] Attempt with ${modelName} failed (${err.message}). Trying next...`);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Dynamically generate a personalized roadmap based on user input
  */
 async function generateCustomRoadmap(req, res) {
@@ -828,16 +948,24 @@ async function generateCustomRoadmap(req, res) {
       return 10; // Default to Problem Solving
     };
 
-    // Synthesize curriculum
-    const curriculum = synthesizeCurriculum(
-      targetRole,
-      companyName,
-      difficulty,
-      estimatedWeeks,
-      focusTopics,
-      department || student.department,
-      domain
+    // 1. Attempt AI curriculum generation using Google Gemini
+    let curriculum = await generateAICurriculum(
+      { targetRole, companyName, difficulty, estimatedWeeks, focusTopics, department, domain },
+      { department: student.department, studentId }
     );
+
+    // 2. Fallback to algorithmic synthesis if AI generation failed or was unavailable
+    if (!curriculum) {
+      curriculum = synthesizeCurriculum(
+        targetRole,
+        companyName,
+        difficulty,
+        estimatedWeeks,
+        focusTopics,
+        department || student.department,
+        domain
+      );
+    }
 
     // Build target_skills JSON
     const usedSkillIds = new Set();

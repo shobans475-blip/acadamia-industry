@@ -176,6 +176,8 @@ async function ensureSchemaInitialized() {
 
     const sanitizeSql = (sql) => {
       return sql
+        .replace(/--.*$/gm, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/CREATE\s+DATABASE\s+IF\s+NOT\s+EXISTS\s+[^;]+;/gi, '')
         .replace(/USE\s+[^;]+;/gi, '');
     };
@@ -186,29 +188,40 @@ async function ensureSchemaInitialized() {
       // Execute schema.sql
       const schemaPath = path.join(__dirname, '..', '..', 'database', 'schema.sql');
       if (fs.existsSync(schemaPath)) {
-        console.log(`[Database Auto-Init] Executing schema.sql...`);
-        const schemaSql = sanitizeSql(fs.readFileSync(schemaPath, 'utf8'));
-        await pool.query(schemaSql);
-        console.log(`[Database Auto-Init] Core schema and tables created.`);
+        try {
+          console.log(`[Database Auto-Init] Executing schema.sql...`);
+          const schemaSql = sanitizeSql(fs.readFileSync(schemaPath, 'utf8'));
+          await pool.query(schemaSql);
+          console.log(`[Database Auto-Init] Core schema and tables created.`);
+        } catch (sErr) {
+          console.warn(`[Database Auto-Init Warning] schema.sql execution:`, sErr.message);
+        }
       }
 
       // Execute seed.sql
       const seedPath = path.join(__dirname, '..', '..', 'database', 'seed.sql');
       if (fs.existsSync(seedPath)) {
-        console.log(`[Database Auto-Init] Seeding initial data...`);
-        const seedSql = sanitizeSql(fs.readFileSync(seedPath, 'utf8'));
-        await pool.query(seedSql);
-        console.log(`[Database Auto-Init] Seed data inserted.`);
+        try {
+          console.log(`[Database Auto-Init] Seeding initial data...`);
+          const seedSql = sanitizeSql(fs.readFileSync(seedPath, 'utf8'));
+          await pool.query(seedSql);
+          console.log(`[Database Auto-Init] Seed data inserted.`);
+        } catch (sdErr) {
+          console.warn(`[Database Auto-Init Warning] seed.sql execution:`, sdErr.message);
+        }
       }
     } else {
       console.log(`[Database Auto-Init] Core tables found in "${currentDb}".`);
     }
 
     // 3. Always synchronize columns and supplementary tables (even if tables already existed)
-    await ensureColumnsExist(currentDb);
-    await ensureSupplementaryTablesExist(currentDb);
-
-    console.log(`[Database Auto-Init] Database is fully verified, synchronized, and ready!`);
+    try {
+      await ensureColumnsExist(currentDb);
+      await ensureSupplementaryTablesExist(currentDb);
+      console.log(`[Database Auto-Init] Database is fully verified, synchronized, and ready!`);
+    } catch (syncErr) {
+      console.warn(`[Database Auto-Init Warning] Columns/Tables synchronization notice:`, syncErr.message);
+    }
     return true;
   } catch (err) {
     console.error(`[Database Auto-Init Error] Failed to initialize schema:`, err.message);

@@ -18,6 +18,7 @@ router.use(authenticateUser);
 
 router.get('/', getRoadmaps);
 router.post('/generate', requireRole('STUDENT'), generateCustomRoadmap);
+router.post('/custom', requireRole('STUDENT'), generateCustomRoadmap);
 router.get('/:id', getRoadmapById);
 router.delete('/:id', requireRole('STUDENT'), deleteCustomRoadmap);
 router.post('/:id/tasks/:taskId/toggle', requireRole('STUDENT'), toggleTask);

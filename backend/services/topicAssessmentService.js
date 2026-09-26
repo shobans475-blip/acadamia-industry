@@ -160,7 +160,7 @@ Return pure JSON only. Do not include markdown codeblocks or conversational text
 
   try {
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
       contents: [prompt],
       config: {
         responseMimeType: 'application/json'

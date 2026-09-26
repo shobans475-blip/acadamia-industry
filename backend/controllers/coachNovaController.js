@@ -195,7 +195,7 @@ Provide clear, structured, encouraging, and technically rigorous markdown answer
 End your response with a 1-sentence actionable Coach Nova tip.`;
 
       const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
         contents: [
           { role: 'user', parts: [{ text: `${systemInstruction}\n\nStudent Question: ${query}` }] }
         ]
