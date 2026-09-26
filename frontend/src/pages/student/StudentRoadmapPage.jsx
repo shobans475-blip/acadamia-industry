@@ -38,7 +38,8 @@ import {
   Plus,
   Trash2,
   RefreshCw,
-  Trophy
+  Trophy,
+  Lightbulb
 } from 'lucide-react';
 
 const POPULAR_PRESETS = [
@@ -170,6 +171,7 @@ export const StudentRoadmapPage = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
+  const [hasStudiedArticle, setHasStudiedArticle] = useState(false);
   const autoSubmittedRef = useRef(false);
 
   // Dynamic Roadmap Generator Form States
@@ -265,7 +267,7 @@ export const StudentRoadmapPage = () => {
 
   // 10-Minute Assessment Countdown Timer
   useEffect(() => {
-    if (!assessmentModalOpen || assessmentLoading || quizResult || !assessmentData) return;
+    if (!assessmentModalOpen || assessmentLoading || quizResult || !assessmentData || !hasStudiedArticle) return;
     if (quizTimeLeft <= 0) {
       if (!autoSubmittedRef.current) {
         autoSubmittedRef.current = true;
@@ -277,7 +279,7 @@ export const StudentRoadmapPage = () => {
       setQuizTimeLeft(t => t - 1);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [assessmentModalOpen, assessmentLoading, quizTimeLeft, quizResult, assessmentData]);
+  }, [assessmentModalOpen, assessmentLoading, quizTimeLeft, quizResult, assessmentData, hasStudiedArticle]);
 
   useEffect(() => {
     fetchRoadmaps();
@@ -418,6 +420,7 @@ export const StudentRoadmapPage = () => {
     setQuizTimeLeft(600);
     setShowReview(false);
     setConfirmSubmitOpen(false);
+    setHasStudiedArticle(false);
     autoSubmittedRef.current = false;
 
     try {
@@ -531,6 +534,7 @@ export const StudentRoadmapPage = () => {
     setAssessmentModalOpen(false);
     setAssessmentData(null);
     setQuizResult(null);
+    setHasStudiedArticle(false);
   };
 
   const copyVerificationCode = (code) => {
@@ -1991,16 +1995,16 @@ export const StudentRoadmapPage = () => {
                     {assessmentData?.taskTitle ? `${assessmentData.taskTitle} Mastery` : 'Topic Assessment'}
                   </h3>
                   <div style={{ fontSize: '0.76rem', color: '#94a3b8', display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.15rem' }}>
-                    <span>20 Domain Questions</span> • 
-                    <span>10-Minute Timer</span> • 
+                    <span>{hasStudiedArticle ? '20 Domain Questions' : 'Step 1: Reference Study Guide'}</span> • 
+                    <span>{hasStudiedArticle ? '10-Minute Timer' : 'Step 2: Verification Assessment'}</span> • 
                     <span>Automatic Roadmap Verification</span>
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {/* Timer Badge (Only when quiz is active) */}
-                {assessmentData && !quizResult && (
+                {/* Timer Badge (Active after confirming study) */}
+                {assessmentData && !quizResult && hasStudiedArticle && (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -2016,6 +2020,25 @@ export const StudentRoadmapPage = () => {
                   }}>
                     <Clock size={16} />
                     {formatTime(quizTimeLeft)}
+                  </div>
+                )}
+
+                {/* Study Mode Indicator (Timer is held/paused until confirmation) */}
+                {assessmentData && !quizResult && !hasStudiedArticle && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.25)',
+                    border: '1px solid rgba(147, 197, 253, 0.3)',
+                    color: '#93c5fd',
+                    fontWeight: 700,
+                    fontSize: '0.78rem'
+                  }}>
+                    <BookOpen size={14} />
+                    Study Mode (Timer Paused)
                   </div>
                 )}
 
@@ -2208,7 +2231,213 @@ export const StudentRoadmapPage = () => {
                     </button>
                   </div>
                 </div>
-              ) : assessmentData ? (
+              ) : assessmentData && !hasStudiedArticle ? (
+                /* ================= STEP 1: REFERENCE ARTICLES & PRE-ASSESSMENT STUDY GUIDE ================= */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {/* Topic Header Card */}
+                  <div style={{
+                    padding: '1.25rem 1.5rem',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '1rem'
+                  }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 10,
+                      backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                      color: 'var(--primary-600)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <BookOpen size={24} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
+                        <span className="badge badge-primary" style={{ fontSize: '0.72rem' }}>
+                          Prerequisite Reference Materials
+                        </span>
+                        {assessmentData.skillName && (
+                          <span className="badge badge-neutral" style={{ fontSize: '0.72rem' }}>
+                            Skill: {assessmentData.skillName}
+                          </span>
+                        )}
+                        {assessmentData.milestoneTitle && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
+                            {assessmentData.milestoneTitle}
+                          </span>
+                        )}
+                      </div>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--slate-900)', margin: '0 0 0.35rem' }}>
+                        {assessmentData.taskTitle}
+                      </h4>
+                      {assessmentData.taskDescription && (
+                        <p style={{ fontSize: '0.86rem', color: 'var(--slate-600)', margin: 0, lineHeight: 1.5 }}>
+                          {assessmentData.taskDescription}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Section: Recommended Reference Articles & Documentation */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                      <Layers size={18} color="var(--primary-600)" />
+                      <h5 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--slate-800)', margin: 0 }}>
+                        Recommended Reference Articles & Documentation
+                      </h5>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      {(assessmentData.referenceMaterial?.articles || [
+                        {
+                          title: `${assessmentData.taskTitle} Official Specifications & Architecture Guide`,
+                          type: "Official Documentation",
+                          url: `https://www.google.com/search?q=${encodeURIComponent(assessmentData.taskTitle + ' documentation best practices')}`,
+                          source: "Verified Technical Index",
+                          estimatedReadingTime: "6 mins",
+                          summary: "Comprehensive technical overview covering syntax, patterns, and production standards."
+                        }
+                      ]).map((article, aIdx) => (
+                        <div
+                          key={aIdx}
+                          style={{
+                            padding: '1.1rem 1.25rem',
+                            backgroundColor: '#ffffff',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-color)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: '240px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                                <span className="badge badge-neutral" style={{ fontSize: '0.68rem', textTransform: 'uppercase' }}>
+                                  {article.type || 'Documentation'}
+                                </span>
+                                {article.estimatedReadingTime && (
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--slate-500)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <Clock size={12} /> {article.estimatedReadingTime}
+                                  </span>
+                                )}
+                                {article.source && (
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--primary-600)', fontWeight: 600 }}>
+                                    via {article.source}
+                                  </span>
+                                )}
+                              </div>
+                              <h6 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--slate-900)', margin: '0 0 0.3rem' }}>
+                                {article.title}
+                              </h6>
+                              <p style={{ fontSize: '0.82rem', color: 'var(--slate-600)', margin: 0, lineHeight: 1.45 }}>
+                                {article.summary}
+                              </p>
+                            </div>
+
+                            <a
+                              href={article.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-outline btn-sm"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              Read Article <ExternalLink size={13} />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Section: Key Concepts Covered In Assessment */}
+                  <div style={{
+                    padding: '1.15rem 1.35rem',
+                    backgroundColor: 'rgba(240, 253, 250, 0.7)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid #99f6e4'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                      <Lightbulb size={18} color="#0d9488" />
+                      <h6 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#115e59', margin: 0 }}>
+                        Key Concepts Covered in the Assessment:
+                      </h6>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.84rem', color: '#134e4a', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {(assessmentData.referenceMaterial?.keyConcepts || [
+                        `Foundational mechanisms and architectural patterns of "${assessmentData.taskTitle}"`,
+                        `Practical syntax, configuration parameters, and standard methodologies`,
+                        `Edge-case troubleshooting, debugging techniques, and performance considerations`,
+                        `Production reliability and industry-aligned best practices`
+                      ]).map((concept, cIdx) => (
+                        <li key={cIdx}>{concept}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Confirmation Call to Action Box */}
+                  <div style={{
+                    padding: '1.5rem',
+                    backgroundColor: '#f0fdf4',
+                    borderRadius: 'var(--radius-md)',
+                    border: '2px solid #86efac',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
+                      <CheckCircle2 size={24} color="#16a34a" />
+                    </div>
+
+                    <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#166534', marginBottom: '0.4rem' }}>
+                      Have you finished studying the reference article / materials?
+                    </h5>
+                    <p style={{ fontSize: '0.86rem', color: '#15803d', maxWidth: '540px', margin: '0 auto 1.25rem', lineHeight: 1.5 }}>
+                      Once you confirm, the <strong>10-minute assessment countdown</strong> will begin. You will answer <strong>20 multiple-choice questions</strong> to verify your mastery and earn your certificate verification code.
+                    </p>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={handleCloseModal}
+                        className="btn btn-outline"
+                        style={{ padding: '0.75rem 1.5rem', fontWeight: 600, borderColor: '#cbd5e1' }}
+                      >
+                        No, I need more time to study
+                      </button>
+
+                      <button
+                        onClick={() => setHasStudiedArticle(true)}
+                        className="btn btn-primary"
+                        style={{
+                          padding: '0.75rem 2rem',
+                          fontWeight: 800,
+                          fontSize: '0.92rem',
+                          backgroundColor: '#059669',
+                          borderColor: '#059669',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
+                        }}
+                      >
+                        Yes, I have studied the article — Start Assessment <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : assessmentData && hasStudiedArticle ? (
                 /* ================= 20-QUESTION ACTIVE QUIZ VIEW ================= */
                 <div>
                   {/* Question Navigator Pills (1 to 20) */}

@@ -254,6 +254,147 @@ async function toggleTask(req, res) {
 }
 
 /**
+ * Helper: generates structured reference articles, documentation, and key revision concepts for a roadmap task
+ */
+function getReferenceArticlesForTopic(taskTitle, skillName = '', taskDescription = '', department = '') {
+  const combined = `${taskTitle} ${skillName} ${taskDescription}`.toLowerCase();
+  const articles = [];
+
+  if (combined.includes('ros') || combined.includes('robot') || combined.includes('slam') || combined.includes('embedded') || combined.includes('c++') || combined.includes('microcontroller') || combined.includes('rtos')) {
+    articles.push({
+      title: "ROS 2 Architecture & Managed Lifecycle Nodes Documentation",
+      type: "Official Documentation",
+      url: "https://docs.ros.org/en/humble/Concepts/Intermediate/About-Managing-Nodes.html",
+      source: "ROS 2 Documentation",
+      estimatedReadingTime: "7 mins",
+      summary: "Master managed lifecycle state machines, deterministic transitions, real-time DDS middleware, and sensor pipelines."
+    });
+    articles.push({
+      title: "Embedded C++ Memory Safety & Zero-Copy Inter-Process Patterns",
+      type: "Technical Specification",
+      url: "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines",
+      source: "C++ Core Guidelines",
+      estimatedReadingTime: "9 mins",
+      summary: "Explore RAII, shared memory ring buffers, cache alignment, and deterministic latency in automotive ECUs."
+    });
+  } else if (combined.includes('react') || combined.includes('frontend') || combined.includes('component')) {
+    articles.push({
+      title: "React Official Documentation: Managing State & Component Lifecycle",
+      type: "Official Documentation",
+      url: "https://react.dev/learn/managing-state",
+      source: "React.dev",
+      estimatedReadingTime: "6 mins",
+      summary: "Explore React state management, hooks composition (useState, useEffect, useMemo), pure components, and reactive render cycles."
+    });
+    articles.push({
+      title: "MDN Web Docs: Asynchronous JavaScript & Modern Client-Side Pipelines",
+      type: "Architecture Guide",
+      url: "https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Asynchronous",
+      source: "MDN Web Docs",
+      estimatedReadingTime: "8 mins",
+      summary: "Detailed review of Promises, async/await, event bubbling, component memory cleanup, and SPA routing patterns."
+    });
+  } else if (/\b(node|nodejs|express|rest api|microservice)\b/i.test(combined) || combined.includes('backend api')) {
+    articles.push({
+      title: "Node.js Event Loop, Timers, and Process Tick Architecture",
+      type: "Official Documentation",
+      url: "https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick",
+      source: "Nodejs.org",
+      estimatedReadingTime: "7 mins",
+      summary: "Master the phases of the libuv event loop, non-blocking asynchronous I/O, worker threads, and connection management."
+    });
+    articles.push({
+      title: "OWASP REST API Security & Defense-in-Depth Best Practices",
+      type: "Security Standard",
+      url: "https://owasp.org/www-project-api-security/",
+      source: "OWASP Foundation",
+      estimatedReadingTime: "6 mins",
+      summary: "Understand token validation, rate limiting, CORS configuration, input sanitization, and error handling in Express APIs."
+    });
+  } else if (combined.includes('sql') || combined.includes('database') || combined.includes('postgres') || combined.includes('mysql') || combined.includes('relational')) {
+    articles.push({
+      title: "Relational Database Normalization & Index Optimization Guide",
+      type: "Technical Guide",
+      url: "https://dev.mysql.com/doc/refman/8.0/en/optimization-indexes.html",
+      source: "MySQL Official Documentation",
+      estimatedReadingTime: "8 mins",
+      summary: "Deep dive into B-Tree indexing, composite indexes, query execution plan profiling, and 1NF to 3NF schema design."
+    });
+    articles.push({
+      title: "ACID Guarantees & Distributed Transaction Isolation Levels",
+      type: "Architecture Standard",
+      url: "https://en.wikipedia.org/wiki/ACID",
+      source: "Computer Science Reference",
+      estimatedReadingTime: "5 mins",
+      summary: "Review Atomicity, Consistency, Isolation, and Durability guarantees and row-level locking mechanisms."
+    });
+  } else if (combined.includes('docker') || combined.includes('kubernetes') || combined.includes('cloud') || combined.includes('aws') || combined.includes('devops')) {
+    articles.push({
+      title: "Docker Containerization Best Practices & Multi-Stage Builds",
+      type: "Official Documentation",
+      url: "https://docs.docker.com/develop/develop-images/multistage-build/",
+      source: "Docker Documentation",
+      estimatedReadingTime: "6 mins",
+      summary: "Learn container layer caching, minimal alpine base images, security contexts, and container isolation."
+    });
+    articles.push({
+      title: "Kubernetes Core Architecture: Pods, Services, and Declarative Deployments",
+      type: "Architecture Guide",
+      url: "https://kubernetes.io/docs/concepts/",
+      source: "Kubernetes.io",
+      estimatedReadingTime: "8 mins",
+      summary: "Understand cluster orchestration, declarative deployments, service discovery, rolling updates, and health probes."
+    });
+  } else if (combined.includes('python') || combined.includes('pytorch') || combined.includes('machine learning') || combined.includes('ai') || combined.includes('vision')) {
+    articles.push({
+      title: "PyTorch Deep Learning Fundamentals: Tensors, Autograd & Neural Layers",
+      type: "Official Tutorial",
+      url: "https://pytorch.org/tutorials/beginner/basics/intro.html",
+      source: "PyTorch.org",
+      estimatedReadingTime: "8 mins",
+      summary: "Review automatic differentiation (autograd), neural network module design, loss functions, and GPU tensor dispatch."
+    });
+    articles.push({
+      title: "FastAPI Production Guide: Asynchronous Concurrency with Pydantic",
+      type: "Developer Guide",
+      url: "https://fastapi.tiangolo.com/async/",
+      source: "FastAPI Documentation",
+      estimatedReadingTime: "6 mins",
+      summary: "Understand asynchronous event loops, schema validation, and high-throughput microservice architectures."
+    });
+  } else {
+    articles.push({
+      title: `${taskTitle} — Industry Concepts & Technical Foundations`,
+      type: "Comprehensive Guide",
+      url: `https://www.google.com/search?q=${encodeURIComponent(taskTitle + ' documentation best practices tutorial')}`,
+      source: "Verified Engineering Index",
+      estimatedReadingTime: "6 mins",
+      summary: `Deep dive into the core specifications, architecture, and production standards for ${taskTitle}.`
+    });
+    articles.push({
+      title: "Computer Science & Engineering Best Practices Manual",
+      type: "Architecture Standard",
+      url: "https://github.com/kamranahmedse/developer-roadmap",
+      source: "Developer Roadmap Archive",
+      estimatedReadingTime: "7 mins",
+      summary: "Industry benchmarks, code structure conventions, algorithmic efficiency, and debugging principles."
+    });
+  }
+
+  const keyConcepts = [
+    `Foundational mechanisms and architecture of "${taskTitle}"`,
+    `Core parameters, configurations, and industry performance metrics`,
+    `Common edge cases, debugging strategies, and error avoidance`,
+    `Production-level best practices and safety/scalability standards`
+  ];
+
+  return {
+    articles,
+    keyConcepts
+  };
+}
+
+/**
  * Generate 20-Question Topic Assessment for a roadmap task
  * (Item 1: Ask 20 questions related to that topic/work)
  */
@@ -307,17 +448,28 @@ async function getTaskAssessment(req, res) {
       options: q.options
     }));
 
+    // Curate reference articles & study guide for the topic
+    const referenceMaterial = getReferenceArticlesForTopic(
+      task.title,
+      task.skill_name,
+      task.description,
+      task.roadmap_dept || stu[0].department
+    );
+
     return sendSuccess(res, {
       sessionId,
       roadmapId: parseInt(roadmapId, 10),
       taskId: parseInt(taskId, 10),
       taskTitle: task.title,
+      taskDescription: task.description,
+      skillName: task.skill_name,
       roadmapTitle: task.roadmap_title,
       milestoneTitle: task.milestone_title,
       department: task.roadmap_dept,
       durationSeconds: 600, // 10 minutes
       totalQuestions: clientQuestions.length,
-      questions: clientQuestions
+      questions: clientQuestions,
+      referenceMaterial
     }, '20-Question Topic Assessment generated successfully');
   } catch (error) {
     console.error('[Roadmap getTaskAssessment Error]', error);
