@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { Award, Clock, CheckCircle2, AlertCircle, ArrowRight, Check, Sparkles, ShieldCheck } from 'lucide-react';
+import { Award, Clock, CheckCircle2, AlertCircle, AlertTriangle, ArrowRight, Check, Sparkles, ShieldCheck, RotateCcw } from 'lucide-react';
 
 export const SkillAssessmentPage = () => {
   const navigate = useNavigate();
@@ -11,10 +11,42 @@ export const SkillAssessmentPage = () => {
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [cancelledReason, setCancelledReason] = useState(null);
 
   useEffect(() => {
     fetchAssessments();
   }, []);
+
+  // Anti-Cheat & Tab Switch Guard: Cancel session if student switches tabs or defocuses window
+  useEffect(() => {
+    if (!activeQuiz || result || cancelledReason) return;
+
+    const handleViolation = (type) => {
+      console.warn(`[Skill Assessment Proctoring] Violation detected: ${type}`);
+      setCancelledReason(
+        'Tab switch or window unfocus was detected during the assessment. Navigating outside the examination tab is strictly prohibited under institutional integrity rules. Your session has been cancelled.'
+      );
+      setAnswers({});
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden || document.visibilityState === 'hidden') {
+        handleViolation('Tab Switch / Document Hidden');
+      }
+    };
+
+    const handleBlur = () => {
+      handleViolation('Window Blur / Focus Lost');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [activeQuiz, result, cancelledReason]);
 
   const fetchAssessments = async () => {
     try {
@@ -32,6 +64,7 @@ export const SkillAssessmentPage = () => {
   const startAssessment = async (id) => {
     setLoading(true);
     setResult(null);
+    setCancelledReason(null);
     setAnswers({});
     try {
       const res = await api.get(`/assessments/${id}`);
@@ -78,10 +111,62 @@ export const SkillAssessmentPage = () => {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading assessments...</div>;
   }
 
+  // If Quiz was cancelled due to proctoring violation (tab switch or blur)
+  if (cancelledReason) {
+    return (
+      <div style={{ maxWidth: '640px', margin: '3rem auto', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '3rem 2rem', border: '2px solid #ef4444', boxShadow: 'var(--shadow-xl)' }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+            <AlertTriangle size={36} color="#dc2626" />
+          </div>
+          <span className="badge" style={{ backgroundColor: '#dc2626', color: '#ffffff', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+            Proctoring Integrity Violation
+          </span>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#991b1b', margin: '0.25rem 0 0.5rem' }}>
+            Assessment Session Cancelled
+          </h2>
+          <p style={{ color: 'var(--slate-600)', fontSize: '0.92rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+            {cancelledReason}
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+            <button
+              onClick={() => { setCancelledReason(null); setActiveQuiz(null); }}
+              className="btn btn-secondary"
+              style={{ fontWeight: 700 }}
+            >
+              Back to Assessments
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // If Quiz is active and not submitted yet
   if (activeQuiz && !result) {
     return (
       <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Strict Proctoring Active Banner */}
+        <div style={{
+          padding: '0.65rem 1rem',
+          backgroundColor: '#fef2f2',
+          border: '1.5px solid #fecaca',
+          borderRadius: 'var(--radius-md)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b', fontSize: '0.84rem', fontWeight: 700 }}>
+            <AlertTriangle size={17} color="#dc2626" />
+            <span><strong>Strict Proctoring Active:</strong> Do not leave or switch this tab, minimize the window, or click outside. Any tab switch will immediately terminate and cancel your assessment.</span>
+          </div>
+          <span className="badge" style={{ backgroundColor: '#dc2626', color: '#ffffff', fontSize: '0.68rem', fontWeight: 800 }}>
+            TAB GUARD ACTIVE
+          </span>
+        </div>
+
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
